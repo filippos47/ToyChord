@@ -6,7 +6,8 @@ from flask_migrate import Migrate
 from sqlalchemy.engine import Engine
 from sqlalchemy import event
 
-# sqlite cheat
+# sqlite cheat to enable foreign key support
+# https://docs.sqlalchemy.org/en/14/dialects/sqlite.html#foreign-key-support
 @event.listens_for(Engine, "connect")
 def set_sqlite_pragma(dbapi_connection, connection_record):
     cursor = dbapi_connection.cursor()
