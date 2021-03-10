@@ -16,7 +16,7 @@ class Bootstrap(Resource):
         new_node_predecessor = compute_predecessor(nodes, new_node_hash)
         new_node_successor = compute_successor(nodes, new_node_hash)
 
-        if db.session.query(NodeRecord.id).filter_by(ip_port=new_node_ip).first() is None:
+        if NodeRecord.query.filter_by(ip_port=new_node_ip).first() is None:
             new_node_record = NodeRecord(bootstrap_id = 1, ip_port = new_node_ip)
             db.session.add(new_node_record)
             db.session.commit()
@@ -24,3 +24,11 @@ class Bootstrap(Resource):
         response = {'predecessor': new_node_predecessor, 
                 'successor': new_node_successor}
         return response
+
+    def delete(self):
+        departing_node_ip = request.json['source_ip_port']
+
+        departing_node_record = NodeRecord.query.filter_by(ip_port=departing_node_ip).first()
+        db.session.delete(departing_node_record)
+        db.session.commit()
+        return Response(status=200)
