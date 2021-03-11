@@ -9,9 +9,7 @@ class UpdateSuccessor(Resource):
         source_ip_port = request.host
         hashed_id = str(compute_sha1_hash(source_ip_port))
         my_identity = ChordNode.query.filter_by(hashed_id = hashed_id).first()
-        print(my_identity)
         my_identity.successor = new_successor
-        print(my_identity)
         db.session.commit()
 
         return Response(status = 200)

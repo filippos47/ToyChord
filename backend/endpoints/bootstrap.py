@@ -17,7 +17,8 @@ class Bootstrap(Resource):
         new_node_successor = compute_successor(nodes, new_node_hash)
 
         if NodeRecord.query.filter_by(ip_port=new_node_ip).first() is None:
-            new_node_record = NodeRecord(bootstrap_id = 1, ip_port = new_node_ip)
+            new_node_record = NodeRecord(bootstrap_id = 1,
+                    ip_port = new_node_ip)
             db.session.add(new_node_record)
             db.session.commit()
 
