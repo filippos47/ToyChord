@@ -1,6 +1,6 @@
 from hashlib import sha1
 from .constants import RING_SIZE, BOOTSTRAP_NODE
-from models import NodeRecord
+import requests
 
 def compute_sha1_hash(string):
     return int.from_bytes(sha1(string.encode()).digest(), byteorder='big')
@@ -30,6 +30,10 @@ def compute_successor(candidates, node_hash):
     return successor
 
 def bootstrap_has_joined():
-    if NodeRecord.query.filter_by(ip_port = BOOTSTRAP_NODE).first() != None:
+    url = "http://" + BOOTSTRAP_NODE + "/bootstrap/management"
+    contact_bootstrap = requests.get(url)
+    bootstrap_joined = contact_bootstrap.json().get("result")
+
+    if bootstrap_joined:
         return True
     return False

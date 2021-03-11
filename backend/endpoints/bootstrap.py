@@ -6,6 +6,13 @@ from utils.common import compute_predecessor, compute_successor, compute_sha1_ha
 from database import db
 
 class Bootstrap(Resource):
+    # This endpoint verifies whether bootstrap node has joined the ring.
+    def get(self):
+        if NodeRecord.query.filter_by(ip_port = request.host).first() != None:
+            return {"result": True}
+        return {"result": False}
+
+    # This endpoint registers a new node in the ring.
     def post(self):
         new_node_ip = request.json['source_ip_port']
 
@@ -26,6 +33,7 @@ class Bootstrap(Resource):
                 'successor': new_node_successor}
         return response
 
+    # This endpoint unregisters a departing node from the ring.
     def delete(self):
         departing_node_ip = request.json['source_ip_port']
 
