@@ -20,12 +20,11 @@ class Depart(Resource):
                 predecessor = my_identity.predecessor
 
                 # First, contact bootstrap node to get deleted
-                url = "http://" + BOOTSTRAP_NODE + '/bootstrap/join'
+                url = "http://" + BOOTSTRAP_NODE + '/bootstrap/management'
                 bootstrap_response = requests.delete(url,
                         json={'source_ip_port': source_ip_port})
 
                 # Then, gather all stored data for handover.
-
                 offloaded_data = {}
                 to_delete_data = KeyValuePair.query.all()
                 for entry in to_delete_data:
@@ -34,13 +33,11 @@ class Depart(Resource):
 
                 # Now, communicate with our successor to inform him that we are
                 # leaving and hand over our data.
-
                 url = "http://" + successor + '/update_predecessor/' + predecessor
                 successor_response = requests.delete(url, json = offloaded_data)
 
                 # Also, communicate with our predecessor to inform him that we are
                 # leaving.
-
                 url = "http://" + predecessor + '/update_successor/' + successor
                 predecessor_response = requests.post(url)
 
@@ -53,5 +50,4 @@ class Depart(Resource):
         else:
             response = "You are not in the ring yet!"
 
-        print(ChordNode.query.all())
         return Response(response, status=200)

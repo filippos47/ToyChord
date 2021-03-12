@@ -21,9 +21,7 @@ class UpdatePredecessor(Resource):
             db.session.delete(entry)
 
         # Adjust my predecessor field
-        print(my_identity)
         my_identity.predecessor = new_predecessor
-        print(my_identity)
         db.session.commit()
         return offloaded_data
 

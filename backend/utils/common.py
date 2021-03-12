@@ -1,5 +1,6 @@
 from hashlib import sha1
-from .constants import RING_SIZE
+from .constants import RING_SIZE, BOOTSTRAP_NODE
+import requests
 
 def compute_sha1_hash(string):
     return int.from_bytes(sha1(string.encode()).digest(), byteorder='big')
@@ -27,3 +28,12 @@ def compute_successor(candidates, node_hash):
             min_distance = RING_SIZE - (node_hash - candidate_hash)
             successor = candidate
     return successor
+
+def bootstrap_has_joined():
+    url = "http://" + BOOTSTRAP_NODE + "/bootstrap/management"
+    contact_bootstrap = requests.get(url)
+    bootstrap_joined = contact_bootstrap.json().get("result")
+
+    if bootstrap_joined:
+        return True
+    return False
