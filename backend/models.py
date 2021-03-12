@@ -19,14 +19,14 @@ class ChordNode(db.Model):
 class KeyValuePair(db.Model):
     __tablename__ = 'keyvaluepair'
 
+    
     id = db.Column(db.Integer, primary_key=True)
-    chordnode_id = db.Column(db.String, db.ForeignKey('chordnode.id'), nullable=True)
+    chordnode_id = db.Column(db.Integer, db.ForeignKey('chordnode.id'), nullable=True)
     hashed_id = db.Column(db.String)
     value = db.Column(db.String)
-
+    key = db.Column(db.String)
     def __repr__(self):
-        return  '<key-value pair: {}:{}, responsible Chord node: {}'.format(self.hashed_id,
-                self.value, self.chordnode_id)
+        return "( "+self.hashed_id+" , "+self.key +" , "+self.value+" )"
 
 class NodeRecord(db.Model):
     __tablename__ = 'noderecord'

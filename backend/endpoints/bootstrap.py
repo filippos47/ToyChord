@@ -4,7 +4,7 @@ import requests
 from models import NodeRecord
 from utils.common import compute_predecessor, compute_successor, compute_sha1_hash
 from database import db
-
+ 
 class Bootstrap(Resource):
     # This endpoint verifies whether bootstrap node has joined the ring.
     def get(self):
@@ -14,6 +14,7 @@ class Bootstrap(Resource):
 
     # This endpoint registers a new node in the ring.
     def post(self):
+        print(request.json['source_ip_port'])
         new_node_ip = request.json['source_ip_port']
 
         nodes = []

@@ -3,7 +3,7 @@ from .constants import RING_SIZE, BOOTSTRAP_NODE
 import requests
 
 def compute_sha1_hash(string):
-    return int.from_bytes(sha1(string.encode()).digest(), byteorder='big')
+    return int.from_bytes(sha1(string.encode()).digest(), byteorder='big') 
 
 def compute_predecessor(candidates, node_hash):
     min_distance = float("inf")
@@ -37,3 +37,16 @@ def bootstrap_has_joined():
     if bootstrap_joined:
         return True
     return False
+
+
+def check_responsible_set(NodeID,predID,succID,hashed_key):
+         case_1=hashed_key<=NodeID and hashed_key > predID
+         case_2=False
+         case_3=False
+         case_4=False
+         if  predID > NodeID :
+            case_2=hashed_key>=0 and hashed_key<=NodeID
+            case_3=hashed_key>=predID
+         if predID==succID:
+             case_4=True   
+         return case_1 or case_2 or case_3 or case_4
