@@ -31,6 +31,7 @@ def upgrade():
     sa.Column('chordnode_id', sa.String(), nullable=True),
     sa.Column('hashed_id', sa.String(), nullable=True),
     sa.Column('value', sa.String(), nullable=True),
+     sa.Column('key', sa.String(), nullable=True),
     sa.ForeignKeyConstraint(['chordnode_id'], ['chordnode.id'], ),
     sa.PrimaryKeyConstraint('id')
     )
