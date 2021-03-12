@@ -43,7 +43,10 @@ def check_responsible_set(NodeID,predID,succID,hashed_key):
          case_1=hashed_key<=NodeID and hashed_key > predID
          case_2=False
          case_3=False
+         case_4=False
          if  predID > NodeID :
             case_2=hashed_key>=0 and hashed_key<=NodeID
             case_3=hashed_key>=predID
-         return case_1 or case_2 or case_3  
+         if predID==succID:
+             case_4=True   
+         return case_1 or case_2 or case_3 or case_4
