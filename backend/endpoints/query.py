@@ -3,7 +3,9 @@ from flask_restful import Resource, Api
 from flask import Flask, request
 from utils.common import compute_sha1_hash, check_responsible_set
 from utils.query import accumulate_node_data
+from utils.constants import REPLICATION_FACTOR
 from models import ChordNode, KeyValuePair
+from sqlalchemy import and_
 from database import db
 import requests
 
@@ -21,19 +23,32 @@ class Query(Resource):
 
             # Normal Query
             if key != '*':
-                # If I am responsible for this key, I will answer the query.
-                if check_responsible_set(hashed_key, server_id, pred_id):
-                    record = KeyValuePair.query.filter_by(key = key).first()
-                    if record is None:
-                        response, status =  "No such record exists.", 404
-                    else:
-                        response, status =  "The requested key-value pair is {}:{}".format(
-                                key, record.value), 200
-                # Else, I will forward the request to my successor.
+                entry = KeyValuePair.query.filter(
+                        and_(
+                            KeyValuePair.key == key,
+                            KeyValuePair.replica_id == REPLICATION_FACTOR
+                        )
+                ).first()
+                # If we hold the last replica of this entry, we will answer the
+                # query.
+                if entry is not None:
+                    response, status =  "The requested key-value pair is {}:{}".format(
+                            key, entry.value), 200
+                # Else, we will forward the request to our successor.
                 else:
-                    url = "http://" + my_identity.successor + "/query"
-                    response = requests.get(url, params = {'key': key})
-                    status = response.status_code
+                    # The initially queried node sets an HTTP header, containing
+                    # its IP. If we make a full circle without finding the last
+                    # replica of the requested entry, we return 404.
+                    starting_id = request.args.get('starting_id')
+                    if starting_id != str(server_id):
+                        if starting_id is None:
+                            starting_id = str(server_id)
+                        url = "http://" + my_identity.successor + "/query"
+                        params = {'key': key, 'starting_id': starting_id}
+                        response = requests.get(url, params = params)
+                        status = response.status_code
+                    else:
+                        response, status =  "No such record exists.", 404
 
                 return Response(response, status = status)
             # Return all songs per node. To achieve this, we make a full circle of
