@@ -19,13 +19,14 @@ class KeyValuePair(db.Model):
 
     id = db.Column(db.Integer, primary_key=True)
     chordnode_id = db.Column(db.String)
-    hashed_key = db.Column(db.String)
-    value = db.Column(db.String)
     key = db.Column(db.String)
+    value = db.Column(db.String)
+    hashed_key = db.Column(db.String)
+    replica_id = db.Column(db.Integer)
 
     def __repr__(self):
-        return "Key-Value pair {}:{}, stored on node {}".format(self.key,
-                self.value, self.chordnode_id)
+        return "Key-Value pair {}:{}, stored on node {} (replica id: {})".format(
+                self.key, self.value, self.chordnode_id, self.replica_id)
 
 class NodeRecord(db.Model):
     __tablename__ = 'noderecord'

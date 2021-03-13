@@ -2,7 +2,11 @@ from flask import Response
 from flask_restful import Resource, Api
 import requests
 from flask import Flask, request
-from utils.common import compute_sha1_hash, check_responsible_set
+from utils.common import (
+        compute_sha1_hash,
+        check_responsible_set,
+        handle_replicated_data,
+)
 from models import ChordNode, KeyValuePair
 from database import db
 
@@ -17,23 +21,43 @@ class Delete(Resource):
 
         if my_identity is not None:
             pred_id = compute_sha1_hash(my_identity.predecessor)
-            # If I am responsible for this key, I will delete it.
-            if check_responsible_set(hashed_key, server_id, pred_id):
-                record = KeyValuePair.query.filter_by(key = key).first()
-                if record == None:
+            url = "http://" + my_identity.successor + "/delete"
+            params = {'key': key}
+
+            """
+            When we receive a deletion request, there are two cases where we
+            will have to handle it ourselves:
+            1) If we are responsible for this key, we will delete it. Then,
+               we must ensure that every other replica will be deleted, too. 
+               In order to achieve this, we save in an HTTP header the 
+               replica_id of our successor, and we forward the request to him.
+            2) If we need to delete a replica of this entry, we will do so.
+               As stated before, in this scenario the HTTP header `next_replica`
+               will store the replica_id of our copy. Our predecessor is fully
+               responsible for determining whether we hold a copy of an entry,
+               or every replica has been deleted.
+            """
+            if check_responsible_set(hashed_key, server_id, pred_id) or \
+                    request.args.get('next_replica') is not None:
+                entry = KeyValuePair.query.filter_by(key = key).first()
+                if entry is None:
                     response, status =  "No such record exists.", 404
                 else:
+                    try:
+                        current_replica = int(request.args.get('next_replica'))
+                    except:
+                        current_replica = 1
                     response, status =  "The key-value pair {}:{} is now deleted.".format(
-                            key, record.value), 200
-                    db.session.delete(record)
-                    print(KeyValuePair.query.all())
+                            key, entry.value), 200
+                    db.session.delete(entry)
                     db.session.commit()
-            # Else, I will forward the request to my successor.
+                    handle_replicated_data(current_replica + 1, url, params,
+                            deleting_data = True)
+            # Else, we just forward the deletion request until the responsible
+            # node receives it.
             else:
-                url = "http://" + my_identity.successor + "/delete"
-                response = requests.post(url, params = {'key': key})
+                response = requests.post(url, params = params)
                 status = response.status_code
-
             return Response(response, status = status)
         else:
             response = "You must be in the ring to perform operations!"

@@ -2,7 +2,8 @@ from flask import Response, request, jsonify
 from flask_restful import Resource
 import requests
 from models import NodeRecord
-from utils.common import compute_predecessor, compute_successor, compute_sha1_hash
+from utils.common import compute_sha1_hash
+from utils.bootstrap import compute_predecessor, compute_successor
 from database import db
  
 class Bootstrap(Resource):

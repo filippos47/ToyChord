@@ -3,7 +3,8 @@ from flask_restful import Resource
 import requests
 from database import db
 from utils.constants import BOOTSTRAP_NODE
-from utils.common import compute_sha1_hash, bootstrap_has_joined
+from utils.common import compute_sha1_hash, fix_replication
+from utils.join import bootstrap_has_joined
 from models import ChordNode, KeyValuePair, NodeRecord
 
 class Join(Resource):
@@ -41,10 +42,17 @@ class Join(Resource):
 
                     # Save our delegated data
                     for key in delegated_data:
+                        (value, replica_id) = delegated_data[key]
                         data = KeyValuePair(chordnode_id = server_id,
-                                key = key,
-                                value = delegated_data[key],
-                                hashed_key = str(compute_sha1_hash(key)))
+                                            key = key,
+                                            value = value,
+                                            hashed_key = str(compute_sha1_hash(key)),
+                                            replica_id = replica_id)
+                        # For each key-value pair we obtained, we have to inform
+                        # every node to our LEFT that holds a copy. The leftmost
+                        # (last) node that owns a replica of this entry must
+                        # delete it.
+                        fix_replication(key, successor)
                         db.session.add(data)
 
                     # To finish off, communicate with our predecessor to inform him

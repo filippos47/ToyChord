@@ -1,11 +1,8 @@
 from flask import Response
 from flask_restful import Resource, Api
 from flask import Flask, request
-from utils.common import (
-        compute_sha1_hash,
-        check_responsible_set,
-        accumulate_node_data,
-)
+from utils.common import compute_sha1_hash, check_responsible_set
+from utils.query import accumulate_node_data
 from models import ChordNode, KeyValuePair
 from database import db
 import requests
@@ -27,7 +24,7 @@ class Query(Resource):
                 # If I am responsible for this key, I will answer the query.
                 if check_responsible_set(hashed_key, server_id, pred_id):
                     record = KeyValuePair.query.filter_by(key = key).first()
-                    if record == None:
+                    if record is None:
                         response, status =  "No such record exists.", 404
                     else:
                         response, status =  "The requested key-value pair is {}:{}".format(
@@ -42,18 +39,18 @@ class Query(Resource):
             # Return all songs per node. To achieve this, we make a full circle of
             # the ring.
             else:
+                url = "http://" + my_identity.successor + "/query"
                 # The initially queried node initializes a dictionary, in which each
                 # node will append his key-value pairs. He also saves himself as the
                 # starting id, so as to identify when the full circle is completed.
-                if request.args.get('starting_id') == None:    
+                if request.args.get('starting_id') is None:    
                     # By the time a response is received, every node will have
                     # appended its key-value storage to the dictionary we created.
                     # It's time we return this dictionary to the user.
                     node_data = accumulate_node_data(server_id,
                             KeyValuePair.query.all())
-                    url = "http://" + my_identity.successor + "/query"
-                    response = requests.get(url, params = {'key': key,
-                        'starting_id': str(server_id)} , json = node_data)
+                    params = {'key': key, 'starting_id': str(server_id)}
+                    response = requests.get(url, params = params, json = node_data)
                     
                     # Sort by key first!
                     storage = response.json()
@@ -72,9 +69,8 @@ class Query(Resource):
                                 KeyValuePair.query.all())
                         merged_node_data = {**node_data, **received_node_data}
 
-                        url = "http://" + my_identity.successor + "/query"
-                        response = requests.get(url, params = {'key': key,
-                            'starting_id': request.args.get('starting_id')},
+                        params = {'key': key, 'starting_id': request.args.get('starting_id')}
+                        response = requests.get(url, params = params,
                             json = merged_node_data)
 
                         return response.json()
