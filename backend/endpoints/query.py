@@ -3,7 +3,7 @@ from flask_restful import Resource, Api
 from flask import Flask, request
 from utils.common import compute_sha1_hash, check_responsible_set
 from utils.query import accumulate_node_data
-from utils.constants import REPLICATION_FACTOR
+from utils.constants import REPLICATION_FACTOR, CONSISTENCY_MODE
 from models import ChordNode, KeyValuePair
 from sqlalchemy import and_
 from database import db
@@ -12,25 +12,19 @@ import requests
 class Query(Resource):
     def get(self):
         key=request.args.get('key')
-        hashed_key=compute_sha1_hash(key)
-
         server_id = compute_sha1_hash(request.host)
         my_identity = ChordNode.query.filter_by(hashed_id = str(server_id)).first()
 
-        if my_identity is not None:
-            pred_id=int(compute_sha1_hash(my_identity.predecessor))
-            succ_id=int(compute_sha1_hash(my_identity.successor))
-
+        if my_identity is not None and key is not None:
             # Normal Query
             if key != '*':
-                entry = KeyValuePair.query.filter(
-                        and_(
-                            KeyValuePair.key == key,
-                            KeyValuePair.replica_id == REPLICATION_FACTOR
-                        )
-                ).first()
-                # If we hold the last replica of this entry, we will answer the
-                # query.
+                sql_query = KeyValuePair.query.filter(KeyValuePair.key == key)
+                # If we want chain replication, only the last replica of the
+                # queried entry should answer our query.
+                if CONSISTENCY_MODE == "CHAIN_REPLICATION":
+                    sql_query.filter(KeyValuePair.replica_id == REPLICATION_FACTOR)
+                # Else, any replica can answer our query.
+                entry = sql_query.first()
                 if entry is not None:
                     response, status =  "The requested key-value pair is {}:{}".format(
                             key, entry.value), 200
@@ -51,8 +45,8 @@ class Query(Resource):
                         response, status =  "No such record exists.", 404
 
                 return Response(response, status = status)
-            # Return all songs per node. To achieve this, we make a full circle of
-            # the ring.
+            # Return every entry per node. To achieve this, we make a full
+            # circle of the ring.
             else:
                 url = "http://" + my_identity.successor + "/query"
                 # The initially queried node initializes a dictionary, in which each
@@ -89,6 +83,8 @@ class Query(Resource):
                             json = merged_node_data)
 
                         return response.json()
+        elif key is None:
+            response = "You didn't specify a key!"
         else:
             response = "You must be in the ring to perform operations!"
             return Response(response, status = 401)

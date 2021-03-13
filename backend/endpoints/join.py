@@ -15,7 +15,6 @@ class Join(Resource):
 
         # Ensure that this Chord node has not already joined the ring.
         if ChordNode.query.filter_by(hashed_id = server_id).first() is None:
-            print(server_ip_port, BOOTSTRAP_NODE)
             if server_ip_port != BOOTSTRAP_NODE:
                 if bootstrap_has_joined():
                     # First, contact bootstrap node to get registered and obtain
@@ -38,7 +37,6 @@ class Join(Resource):
                     url = "http://" + successor + '/update_predecessor/' + server_ip_port
                     successor_response = requests.post(url)
                     delegated_data = successor_response.json()
-                    print(delegated_data)
 
                     # Save our delegated data
                     for key in delegated_data:

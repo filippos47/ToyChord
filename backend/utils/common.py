@@ -1,6 +1,8 @@
 from hashlib import sha1
 import requests
-from .constants import REPLICATION_FACTOR
+import threading
+import time
+from .constants import REPLICATION_FACTOR, CONSISTENCY_MODE
 
 def compute_sha1_hash(string):
     return int.from_bytes(sha1(string.encode()).digest(), byteorder='big') 
@@ -17,17 +19,34 @@ def check_responsible_set(hashed_key, node_hash, pred_hash):
         return True
     return False
 
-def handle_replicated_data(next_replica, url, params, deleting_data = False):
+# Cheat way to simulate non-blocking HTTP requests
+# https://stackoverflow.com/questions/57637654/how-to-fire-and-forgot-a-http-request
+def non_blocking_http_request(url, params):
+    requests.post(url, params = params)
+
+def handle_replicated_data(next_replica, url, params):
     if next_replica <= REPLICATION_FACTOR:
+        """
+        Use cases:
+        1) During key deletion, not every replica has been deleted.
+        2) During key insertion, not every replica has been created
+        In both cases, forward the request to our successor.
+        """
         params['next_replica'] = next_replica
-        # Not every replica has been deleted; forward the request to our
-        # successor.
-        if deleting_data:
-            deletion_response = requests.post(url, params = params)
-        # The replication target has not been achieved; forward the request to
-        # our successor.
+        # requests library is blocking; this means that the user will
+        # receive his response only AFTER every node has deleted/created his
+        # replica.
+        if CONSISTENCY_MODE == "CHAIN_REPLICATION":
+            response = requests.post(url, params = params)
+        # In this case, we want the user to receive a response immediately after
+        # the MASTER replica is deleted/created. In order to achieve this, we
+        # "improvise" :p
         else:
-            replication_response = requests.post(url, params = params)
+            t = threading.Thread(target=non_blocking_http_request,
+                    args=[url, params])
+            t.daemon = True
+            t.start()
+
 
 def fix_replication(key, successor, value = None):
     url = "http://" + successor + '/fix_replication/' + key

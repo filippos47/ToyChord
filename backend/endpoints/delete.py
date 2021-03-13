@@ -14,12 +14,11 @@ from database import db
 class Delete(Resource):
     def post(self):
         key = request.args.get('key')
-        hashed_key = compute_sha1_hash(key)
-
         server_id = compute_sha1_hash(request.host)
         my_identity = ChordNode.query.filter_by(hashed_id = str(server_id)).first()
 
-        if my_identity is not None:
+        if my_identity is not None and key is not None:
+            hashed_key = compute_sha1_hash(key)
             pred_id = compute_sha1_hash(my_identity.predecessor)
             url = "http://" + my_identity.successor + "/delete"
             params = {'key': key}
@@ -51,14 +50,15 @@ class Delete(Resource):
                             key, entry.value), 200
                     db.session.delete(entry)
                     db.session.commit()
-                    handle_replicated_data(current_replica + 1, url, params,
-                            deleting_data = True)
+                    handle_replicated_data(current_replica + 1, url, params)
             # Else, we just forward the deletion request until the responsible
             # node receives it.
             else:
                 response = requests.post(url, params = params)
                 status = response.status_code
             return Response(response, status = status)
+        elif key is None:
+            response = "You didn't specify a key!"
         else:
             response = "You must be in the ring to perform operations!"
             return Response(response, status = 401)

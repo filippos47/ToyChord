@@ -9,8 +9,7 @@ from models import KeyValuePair, ChordNode
 class FixReplication(Resource):
     # This method is called when a new node has been inserted.
     def post(self, key):
-        server_ip_port = request.host
-        server_id = str(compute_sha1_hash(server_ip_port))
+        server_id = str(compute_sha1_hash(request.host))
         my_identity = ChordNode.query.filter_by(hashed_id = server_id).first()
 
         entry = KeyValuePair.query.filter_by(key = key).first()
@@ -25,8 +24,7 @@ class FixReplication(Resource):
         return Response(status = 200)
     # This method is called when a node has departed.
     def delete(self, key):
-        server_ip_port = request.host
-        server_id = str(compute_sha1_hash(server_ip_port))
+        server_id = str(compute_sha1_hash(request.host))
         my_identity = ChordNode.query.filter_by(hashed_id = server_id).first()
 
         value = request.args.get('value')

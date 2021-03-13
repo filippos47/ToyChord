@@ -7,8 +7,7 @@ from utils.common import compute_sha1_hash
 
 class UpdatePredecessor(Resource):
     def post(self, new_predecessor):
-        server_ip_port = request.host
-        server_id = str(compute_sha1_hash(server_ip_port))
+        server_id = str(compute_sha1_hash(request.host))
         my_identity = ChordNode.query.filter_by(hashed_id = server_id).first()
         new_predecessor_hash = compute_sha1_hash(new_predecessor)
        
@@ -18,7 +17,6 @@ class UpdatePredecessor(Resource):
         for entry in storage:
             if int(entry.hashed_key) < new_predecessor_hash:
                 delegated_data[entry.key] = (entry.value, entry.replica_id)
-        print(delegated_data)
 
         # Adjust my predecessor field
         my_identity.predecessor = new_predecessor
@@ -26,8 +24,7 @@ class UpdatePredecessor(Resource):
         return delegated_data
 
     def delete(self, new_predecessor):
-        server_ip_port = request.host
-        server_id = str(compute_sha1_hash(server_ip_port))
+        server_id = str(compute_sha1_hash(request.host))
         my_identity = ChordNode.query.filter_by(hashed_id = server_id).first()
         # Adjust my predecessor field
         my_identity.predecessor = new_predecessor
