@@ -7,9 +7,9 @@ from utils.common import compute_sha1_hash
 class Overlay(Resource):
     def get(self):
         # Chord node ip:port = server's ip:port.
-        my_ip_port = request.host
-        hashed_id = compute_sha1_hash(my_ip_port)
-        my_identity = ChordNode.query.filter_by(hashed_id = str(hashed_id)).first()
+        server_ip_port = request.host
+        server_id = compute_sha1_hash(server_ip_port)
+        my_identity = ChordNode.query.filter_by(hashed_id = str(server_id)).first()
 
         if my_identity is not None:
             successor = my_identity.successor
@@ -24,7 +24,7 @@ class Overlay(Resource):
                 nodes_traversed = {}
 
             # Add ourselved to the traversed nodes.
-            nodes_traversed[my_ip_port] = hashed_id
+            nodes_traversed[server_ip_port] = server_id
 
             # If my successor is already in the list, it means that a full circle
             # has been completed, and no more forwarding is needed.
@@ -41,7 +41,7 @@ class Overlay(Resource):
             # Else, just forward the request (and the nodes_traversed dictionary)
             # to our successor, after adding ourselves in the dictionary.
             else:
-                nodes_traversed[my_ip_port] = hashed_id
+                nodes_traversed[server_ip_port] = server_id
                 url = "http://" + successor + "/overlay"
                 forwarding_response = requests.get(url, json = nodes_traversed)
                 overlay = forwarding_response.json()
@@ -67,4 +67,4 @@ class Overlay(Resource):
                     return overlay
         else:
             response = "You must be in the ring to perform operations!"
-            return Response(response, status=401)
+            return Response(response, status = 401)

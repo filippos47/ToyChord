@@ -14,8 +14,9 @@ class Bootstrap(Resource):
 
     # This endpoint registers a new node in the ring.
     def post(self):
-        print(request.json['source_ip_port'])
         new_node_ip = request.json['source_ip_port']
+        server_ip_port = request.host
+        server_id = str(compute_sha1_hash(server_ip_port))
 
         nodes = []
         for node in NodeRecord.query.all():
@@ -25,7 +26,7 @@ class Bootstrap(Resource):
         new_node_successor = compute_successor(nodes, new_node_hash)
 
         if NodeRecord.query.filter_by(ip_port=new_node_ip).first() is None:
-            new_node_record = NodeRecord(bootstrap_id = 1,
+            new_node_record = NodeRecord(bootstrap_id = server_id,
                     ip_port = new_node_ip)
             db.session.add(new_node_record)
             db.session.commit()

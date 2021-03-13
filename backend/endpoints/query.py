@@ -1,60 +1,83 @@
 from flask import Response
 from flask_restful import Resource, Api
-from flask import Flask,request
-from utils.common import compute_sha1_hash,check_responsible_set
-from models import ChordNode,KeyValuePair
+from flask import Flask, request
+from utils.common import (
+        compute_sha1_hash,
+        check_responsible_set,
+        accumulate_node_data,
+)
+from models import ChordNode, KeyValuePair
 from database import db
 import requests
-import json
 
 class Query(Resource):
     def get(self):
-       key=request.args.get('key')
-       hashed_key=compute_sha1_hash(key)
-       my_identity = ChordNode.query.filter_by(hashed_id = compute_sha1_hash(request.host)).first()
-       node_id=int(my_identity.hashed_id)
-       pred_id=int(compute_sha1_hash(my_identity.predecessor))
-       succ_id=int(compute_sha1_hash(my_identity.successor))
-       ip_port=(my_identity.successor).split(":")
-       #  Normal Query
-       if key != '*':
+        key=request.args.get('key')
+        hashed_key=compute_sha1_hash(key)
 
-          if(check_responsible_set(node_id,pred_id,succ_id,hashed_key )):
-              record=KeyValuePair.query.filter_by(hashed_id = str(hashed_key)).first()
-              if  record == None:
-                    return "no such record"      
-              else:
-                    print(hashed_key)
-                    return record.key+" "+record.value
+        server_id = compute_sha1_hash(request.host)
+        my_identity = ChordNode.query.filter_by(hashed_id = str(server_id)).first()
 
-          r = requests.get('http://'+ip_port[0]+':'+ip_port[1]+'/query',params = {'key':key})    
-          return Response(r.text, status=200)
-     #  Return all songs per node
-       else:
-            if request.args.get('id') == None:    
-               accumulator={}
-               node_data={}
-               data=KeyValuePair.query.all()
-               for record in data:
-                  accumulator[record.hashed_id]=(record.key,record.value)
-               node_data["Node id "+str(node_id)] =accumulator
-               r=requests.get('http://'+ip_port[0]+':'+ip_port[1]+'/query',params={'key':key,'id':str(node_id)},json= node_data)  
-               return r.json()
+        if my_identity is not None:
+            pred_id=int(compute_sha1_hash(my_identity.predecessor))
+            succ_id=int(compute_sha1_hash(my_identity.successor))
+
+            # Normal Query
+            if key != '*':
+                # If I am responsible for this key, I will answer the query.
+                if check_responsible_set(hashed_key, server_id, pred_id):
+                    record = KeyValuePair.query.filter_by(key = key).first()
+                    if record == None:
+                        response, status =  "No such record exists.", 404
+                    else:
+                        response, status =  "The requested key-value pair is {}:{}".format(
+                                key, record.value), 200
+                # Else, I will forward the request to my successor.
+                else:
+                    url = "http://" + my_identity.successor + "/query"
+                    response = requests.get(url, params = {'key': key})
+                    status = response.status_code
+
+                return Response(response, status = status)
+            # Return all songs per node. To achieve this, we make a full circle of
+            # the ring.
             else:
-             if request.args.get('id')==str(node_id):
-                  return request.json
-             else:
-                request_data=request.json
-                node_data={}
-                returned={}
-                data=KeyValuePair.query.all()
-                for record in data:
-                    node_data[record.hashed_id]=(record.key,record.value)
-                returned["Node id "+str(node_id)]=node_data
-                merged={**returned,**request_data}
-                r=requests.get('http://'+ip_port[0]+':'+ip_port[1]+'/query',params={'key':key,'id':request.args.get('id')},json= merged)
-                return r.json()
-               
+                # The initially queried node initializes a dictionary, in which each
+                # node will append his key-value pairs. He also saves himself as the
+                # starting id, so as to identify when the full circle is completed.
+                if request.args.get('starting_id') == None:    
+                    # By the time a response is received, every node will have
+                    # appended its key-value storage to the dictionary we created.
+                    # It's time we return this dictionary to the user.
+                    node_data = accumulate_node_data(server_id,
+                            KeyValuePair.query.all())
+                    url = "http://" + my_identity.successor + "/query"
+                    response = requests.get(url, params = {'key': key,
+                        'starting_id': str(server_id)} , json = node_data)
+                    
+                    # Sort by key first!
+                    storage = response.json()
+                    sorted_storage = dict(sorted(storage.items(),
+                        key = lambda kv: int(kv[0])))
+                    return sorted_storage
+                else:
+                    # A full circle has been completed.
+                    if request.args.get('starting_id') == str(server_id):
+                        return request.json
+                    # Append my key-value storage and forward the request to my
+                    # successor.
+                    else:
+                        received_node_data = request.json
+                        node_data = accumulate_node_data(server_id,
+                                KeyValuePair.query.all())
+                        merged_node_data = {**node_data, **received_node_data}
 
-            
+                        url = "http://" + my_identity.successor + "/query"
+                        response = requests.get(url, params = {'key': key,
+                            'starting_id': request.args.get('starting_id')},
+                            json = merged_node_data)
 
+                        return response.json()
+        else:
+            response = "You must be in the ring to perform operations!"
+            return Response(response, status = 401)

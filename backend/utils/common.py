@@ -39,14 +39,28 @@ def bootstrap_has_joined():
     return False
 
 
-def check_responsible_set(NodeID,predID,succID,hashed_key):
-         case_1=hashed_key<=NodeID and hashed_key > predID
-         case_2=False
-         case_3=False
-         case_4=False
-         if  predID > NodeID :
-            case_2=hashed_key>=0 and hashed_key<=NodeID
-            case_3=hashed_key>=predID
-         if predID==succID:
-             case_4=True   
-         return case_1 or case_2 or case_3 or case_4
+def check_responsible_set(hashed_key, node_hash, pred_hash):
+    print(hashed_key)
+    print(node_hash)
+    print(pred_hash)
+    if node_hash > pred_hash and \
+            (hashed_key <= node_hash and hashed_key > pred_hash):
+        print("case1")
+        return True
+    elif node_hash < pred_hash and \
+            ((hashed_key > 0 and hashed_key <= node_hash) or hashed_key > pred_hash):
+        print("case2")
+        return True
+    # Corner case: Only the bootstrap node is in the ring.
+    elif node_hash == pred_hash:
+        print("corner")
+        return True
+    return False
+
+def accumulate_node_data(node_hash, raw_data):
+    accumulator = {}
+    node_data = {}
+    for record in raw_data:
+        accumulator[record.hashed_key] = (record.key, record.value)
+    node_data[str(node_hash)] = accumulator
+    return node_data

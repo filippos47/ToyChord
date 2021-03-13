@@ -9,23 +9,24 @@ from models import ChordNode, KeyValuePair, NodeRecord
 class Join(Resource):
     def post(self):
         # Chord node ip:port = server's ip:port.
-        source_ip_port = request.host
-        hashed_id = str(compute_sha1_hash(source_ip_port))
+        server_ip_port = request.host
+        server_id = str(compute_sha1_hash(server_ip_port))
 
         # Ensure that this Chord node has not already joined the ring.
-        if ChordNode.query.filter_by(hashed_id=hashed_id).first() is None:
-            if source_ip_port != BOOTSTRAP_NODE:
+        if ChordNode.query.filter_by(hashed_id = server_id).first() is None:
+            print(server_ip_port, BOOTSTRAP_NODE)
+            if server_ip_port != BOOTSTRAP_NODE:
                 if bootstrap_has_joined():
                     # First, contact bootstrap node to get registered and obtain
                     # predecessor and successor.
                     url = "http://" + BOOTSTRAP_NODE + '/bootstrap/management'
                     bootstrap_response = requests.post(url,
-                            json={'source_ip_port': source_ip_port})
+                            json={'source_ip_port': server_ip_port})
                     successor = bootstrap_response.json().get('successor')
                     predecessor = bootstrap_response.json().get('predecessor')
 
                     # Then, save our identity in the db.
-                    new_node = ChordNode(hashed_id = hashed_id,
+                    new_node = ChordNode(hashed_id = server_id,
                             successor = successor,
                             predecessor = predecessor,
                             is_bootstrap = False)
@@ -33,44 +34,46 @@ class Join(Resource):
 
                     # Now, communicate with our successor to inform him that we have
                     # joined and obtain our delegated data.
-                    url = "http://" + successor + '/update_predecessor/' + source_ip_port
+                    url = "http://" + successor + '/update_predecessor/' + server_ip_port
                     successor_response = requests.post(url)
                     delegated_data = successor_response.json()
+                    print(delegated_data)
 
                     # Save our delegated data
                     for key in delegated_data:
-                        data = KeyValuePair(chordnode_id = hashed_id,
-                                hashed_id = key,
-                                value = delegated_data[key])
+                        data = KeyValuePair(chordnode_id = server_id,
+                                key = key,
+                                value = delegated_data[key],
+                                hashed_key = str(compute_sha1_hash(key)))
                         db.session.add(data)
 
                     # To finish off, communicate with our predecessor to inform him
                     # that we exist.
-                    url = "http://" + predecessor + '/update_successor/' + source_ip_port
+                    url = "http://" + predecessor + '/update_successor/' + server_ip_port
                     predecessor_responce = requests.post(url)
 
                     # Everything is fine, commit changes to db and leave.
                     db.session.commit()
                     response = "New node joined, with hashed id: {}, successor: {}" \
-                            " and predecessor: {}".format(hashed_id, successor, predecessor)
+                            " and predecessor: {}".format(server_id, successor, predecessor)
                 else:
                     response = "Bootstrap must be the first node that joins the ring!"
 
             # We take for granted that bootstrap node will be the first entering
             # the ring, so no data transfer has to occur.
             else:
-                bootstrap_node = ChordNode(hashed_id = hashed_id,
+                bootstrap_node = ChordNode(hashed_id = server_id,
                                            successor = BOOTSTRAP_NODE,
                                            predecessor = BOOTSTRAP_NODE,
                                            is_bootstrap = True)
-                bootstrap_record = NodeRecord(bootstrap_id = 1,
+                bootstrap_record = NodeRecord(bootstrap_id = server_id,
                         ip_port = BOOTSTRAP_NODE)
                 db.session.add(bootstrap_node)
                 db.session.add(bootstrap_record)
                 db.session.commit()
 
                 response = "Bootstrap joined, with hashed id: {}".format(
-                        hashed_id)
+                        server_id)
         else:
             response = "You have already joined the ring!"
 

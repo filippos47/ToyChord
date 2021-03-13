@@ -7,18 +7,20 @@ from utils.common import compute_sha1_hash
 
 class UpdatePredecessor(Resource):
     def post(self, new_predecessor):
-        source_ip_port = request.host
-        hashed_id = str(compute_sha1_hash(source_ip_port))
-        my_identity = ChordNode.query.filter_by(hashed_id = hashed_id).first()
-        new_predecessor_hash = str(compute_sha1_hash(new_predecessor))
+        server_ip_port = request.host
+        server_id = str(compute_sha1_hash(server_ip_port))
+        my_identity = ChordNode.query.filter_by(hashed_id = server_id).first()
+        new_predecessor_hash = compute_sha1_hash(new_predecessor)
        
         # Collect data that don't belong to me any more, deleting them from my
         # storage
         offloaded_data = {}
-        to_delete_data = KeyValuePair.query.filter(KeyValuePair.hashed_id <= new_predecessor_hash)
-        for entry in to_delete_data:
-            offloaded_data[entry.hashed_id] = entry.value
-            db.session.delete(entry)
+        storage = KeyValuePair.query.all()
+        for entry in storage:
+            if int(entry.hashed_key) < new_predecessor_hash:
+                offloaded_data[entry.key] = entry.value
+                db.session.delete(entry)
+        print(offloaded_data)
 
         # Adjust my predecessor field
         my_identity.predecessor = new_predecessor
@@ -26,15 +28,16 @@ class UpdatePredecessor(Resource):
         return offloaded_data
 
     def delete(self, new_predecessor):
-        source_ip_port = request.host
-        hashed_id = str(compute_sha1_hash(source_ip_port))
-        my_identity = ChordNode.query.filter_by(hashed_id = hashed_id).first()
+        server_ip_port = request.host
+        server_id = str(compute_sha1_hash(server_ip_port))
+        my_identity = ChordNode.query.filter_by(hashed_id = server_id).first()
 
         incoming_data = request.json
         for key in incoming_data:
-            data = KeyValuePair(chordnode_id = hashed_id,
-                    hashed_id = key,
-                    value = delegated_data[key])
+            data = KeyValuePair(chordnode_id = server_id,
+                    key = key,
+                    value = incoming_data[key],
+                    hashed_key = str(compute_sha1_hash(key)))
             db.session.add(data)
 
         my_identity.predecessor = new_predecessor

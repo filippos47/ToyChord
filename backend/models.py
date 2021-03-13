@@ -8,8 +8,6 @@ class ChordNode(db.Model):
     successor = db.Column(db.String)
     predecessor = db.Column(db.String)
     is_bootstrap = db.Column(db.Boolean, default=False)
-    storage = db.relationship("KeyValuePair")
-    node_map = db.relationship("NodeRecord", cascade="delete")
 
     def __repr__(self):
         return 'Chord node {}, with successor: {}, predecessor: {}, ' \
@@ -19,20 +17,21 @@ class ChordNode(db.Model):
 class KeyValuePair(db.Model):
     __tablename__ = 'keyvaluepair'
 
-    
     id = db.Column(db.Integer, primary_key=True)
-    chordnode_id = db.Column(db.Integer, db.ForeignKey('chordnode.id'), nullable=True)
-    hashed_id = db.Column(db.String)
+    chordnode_id = db.Column(db.String)
+    hashed_key = db.Column(db.String)
     value = db.Column(db.String)
     key = db.Column(db.String)
+
     def __repr__(self):
-        return "( "+self.hashed_id+" , "+self.key +" , "+self.value+" )"
+        return "Key-Value pair {}:{}, stored on node {}".format(self.key,
+                self.value, self.chordnode_id)
 
 class NodeRecord(db.Model):
     __tablename__ = 'noderecord'
 
     id = db.Column(db.Integer, primary_key=True)
-    bootstrap_id = db.Column(db.Integer, db.ForeignKey('chordnode.id'), nullable=False)
+    bootstrap_id = db.Column(db.String)
     ip_port = db.Column(db.String)
 
     def __repr__(self):

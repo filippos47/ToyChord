@@ -1,8 +1,8 @@
 """Initial migration
 
-Revision ID: 79681945b976
+Revision ID: 11ba4cbee045
 Revises: 
-Create Date: 2021-03-10 19:22:42.678168
+Create Date: 2021-03-12 23:42:46.050025
 
 """
 from alembic import op
@@ -10,7 +10,7 @@ import sqlalchemy as sa
 
 
 # revision identifiers, used by Alembic.
-revision = '79681945b976'
+revision = '11ba4cbee045'
 down_revision = None
 branch_labels = None
 depends_on = None
@@ -29,17 +29,15 @@ def upgrade():
     op.create_table('keyvaluepair',
     sa.Column('id', sa.Integer(), nullable=False),
     sa.Column('chordnode_id', sa.String(), nullable=True),
-    sa.Column('hashed_id', sa.String(), nullable=True),
+    sa.Column('hashed_key', sa.String(), nullable=True),
     sa.Column('value', sa.String(), nullable=True),
-     sa.Column('key', sa.String(), nullable=True),
-    sa.ForeignKeyConstraint(['chordnode_id'], ['chordnode.id'], ),
+    sa.Column('key', sa.String(), nullable=True),
     sa.PrimaryKeyConstraint('id')
     )
     op.create_table('noderecord',
     sa.Column('id', sa.Integer(), nullable=False),
-    sa.Column('bootstrap_id', sa.Integer(), nullable=False),
+    sa.Column('bootstrap_id', sa.String(), nullable=True),
     sa.Column('ip_port', sa.String(), nullable=True),
-    sa.ForeignKeyConstraint(['bootstrap_id'], ['chordnode.id'], ),
     sa.PrimaryKeyConstraint('id')
     )
     # ### end Alembic commands ###

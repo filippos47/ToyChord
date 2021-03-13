@@ -9,36 +9,46 @@ import requests
 
 class Insert(Resource):
     def post(self):
-        key=request.args.get('key')
-        value=request.args.get('value')
-        hashed_key=compute_sha1_hash(key)
-        my_identity = ChordNode.query.filter_by(hashed_id = compute_sha1_hash(request.host)).first()
-        node_id=int(my_identity.hashed_id)
-        pred_id=int(compute_sha1_hash(my_identity.predecessor))
-        succ_id=int(compute_sha1_hash(my_identity.successor))
+        key = request.args.get('key')
+        value = request.args.get('value')
+        hashed_key = compute_sha1_hash(key)
 
-        if(check_responsible_set(node_id,pred_id,succ_id,hashed_key )):
-          record=KeyValuePair.query.filter_by(hashed_id = str(hashed_key)).first()
-          if  record == None:
-                 record = KeyValuePair(chordnode_id = my_identity.id,hashed_id = str(hashed_key),value = value ,key=key)
-                 db.session.add(record)
-                 print(KeyValuePair.query.all())
-                 db.session.commit()
-                 return "record inserted"
-                 
-          else:
-                 db.session.delete(record)
-                 record = KeyValuePair(chordnode_id = my_identity.id,hashed_id = str(hashed_key),value = value,key=key)
-                 db.session.add(record)
-                 print(KeyValuePair.query.all())
-                 db.session.commit()
-                 return "record updated"
+        server_id = compute_sha1_hash(request.host)
+        my_identity = ChordNode.query.filter_by(hashed_id = str(server_id)).first()
 
-        ip_port=(my_identity.successor).split(":") 
-        r = requests.post('http://'+ip_port[0]+':'+ip_port[1]+'/insert',params = {'key':key,'value':value})    
-        return Response(r.text, status=200)
-        
+        if my_identity is not None:
+            pred_id = compute_sha1_hash(my_identity.predecessor)
+            # If I am responsible for this key, I will store it.
+            if check_responsible_set(hashed_key, server_id, pred_id):
+                record = KeyValuePair.query.filter_by(key = key).first()
+                # Check if I already have a record for the key
+                if record == None:
+                    record = KeyValuePair(chordnode_id = str(server_id),
+                            key = key,
+                            value = value,
+                            hashed_key = str(hashed_key))
+                    db.session.add(record)
+                    print(KeyValuePair.query.all())
+                    db.session.commit()
+                    
+                    response = "Inserted key-value pair {}:{}, at node with id {}".format(
+                            key, value, server_id)
+                # If not, create it.
+                else:
+                    record = KeyValuePair.query.filter_by(key = key).first()
+                    record.value = value
+                    print(KeyValuePair.query.all())
+                    db.session.commit()
 
+                    response = "Updated key-value pair {}:{}, at node with id {}".format(
+                            key, value, server_id)
+            # Else, I will forward the request to my successor.
+            else:
+                url = "http://" + my_identity.successor + "/insert"
+                response = requests.post(url,
+                        params = {'key': key,'value': value})
 
-
-       
+            return Response(response, status = 200)
+        else:
+            response = "You must be in the ring to perform operations!"
+            return Response(response, status = 401)
