@@ -1,52 +1,59 @@
 from hashlib import sha1
-from .constants import RING_SIZE, BOOTSTRAP_NODE
 import requests
+import threading
+import time
+from .constants import REPLICATION_FACTOR, CONSISTENCY_MODE
 
 def compute_sha1_hash(string):
     return int.from_bytes(sha1(string.encode()).digest(), byteorder='big') 
 
-def compute_predecessor(candidates, node_hash):
-    min_distance = float("inf")
-    for candidate in candidates:
-        candidate_hash = compute_sha1_hash(candidate)
-        if candidate_hash < node_hash and node_hash - candidate_hash < min_distance:
-            min_distance = node_hash - candidate_hash
-            predecessor = candidate
-        elif RING_SIZE - (candidate_hash - node_hash) < min_distance:
-            min_distance = RING_SIZE - (candidate_hash - node_hash)
-            predecessor = candidate
-    return predecessor
-
-def compute_successor(candidates, node_hash):
-    min_distance = float("inf")
-    for candidate in candidates:
-        candidate_hash = compute_sha1_hash(candidate)
-        if node_hash < candidate_hash and candidate_hash - node_hash < min_distance:
-            min_distance = candidate_hash - node_hash
-            successor = candidate
-        elif RING_SIZE - (node_hash - candidate_hash) < min_distance:
-            min_distance = RING_SIZE - (node_hash - candidate_hash)
-            successor = candidate
-    return successor
-
-def bootstrap_has_joined():
-    url = "http://" + BOOTSTRAP_NODE + "/bootstrap/management"
-    contact_bootstrap = requests.get(url)
-    bootstrap_joined = contact_bootstrap.json().get("result")
-
-    if bootstrap_joined:
+def check_responsible_set(hashed_key, node_hash, pred_hash):
+    if node_hash > pred_hash and \
+            (hashed_key <= node_hash and hashed_key > pred_hash):
+        return True
+    elif node_hash < pred_hash and \
+            ((hashed_key > 0 and hashed_key <= node_hash) or hashed_key > pred_hash):
+        return True
+    # Corner case: Only the bootstrap node is in the ring.
+    elif node_hash == pred_hash:
         return True
     return False
 
+# Cheat way to simulate non-blocking HTTP requests
+# https://stackoverflow.com/questions/57637654/how-to-fire-and-forgot-a-http-request
+def non_blocking_http_request(url, params):
+    requests.post(url, params = params)
 
-def check_responsible_set(NodeID,predID,succID,hashed_key):
-         case_1=hashed_key<=NodeID and hashed_key > predID
-         case_2=False
-         case_3=False
-         case_4=False
-         if  predID > NodeID :
-            case_2=hashed_key>=0 and hashed_key<=NodeID
-            case_3=hashed_key>=predID
-         if predID==succID:
-             case_4=True   
-         return case_1 or case_2 or case_3 or case_4
+def handle_replicated_data(next_replica, url, params):
+    if next_replica <= REPLICATION_FACTOR:
+        """
+        Use cases:
+        1) During key deletion, not every replica has been deleted.
+        2) During key insertion, not every replica has been created
+        In both cases, forward the request to our successor.
+        """
+        params['next_replica'] = next_replica
+        # requests library is blocking; this means that the user will
+        # receive his response only AFTER every node has deleted/created his
+        # replica.
+        if CONSISTENCY_MODE == "CHAIN_REPLICATION":
+            response = requests.post(url, params = params)
+        # In this case, we want the user to receive a response immediately after
+        # the MASTER replica is deleted/created. In order to achieve this, we
+        # "improvise" :p
+        else:
+            t = threading.Thread(target=non_blocking_http_request,
+                    args=[url, params])
+            t.daemon = True
+            t.start()
+
+
+def fix_replication(key, successor, value = None):
+    url = "http://" + successor + '/fix_replication/' + key
+    # In this case, a node has departed and we are creating a new replica.
+    if value is not None:
+        params = {'value': value}
+        requests.delete(url, params = params)
+    # Here, a node has joined and we have to destroy a redundant replica.
+    else:
+        requests.post(url)
