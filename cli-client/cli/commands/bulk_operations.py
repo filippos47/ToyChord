@@ -21,7 +21,7 @@ def bulk_operations(ctx, ip_port_list, source_file): #[(ip1,port1),(ip2,port2) ]
         for line in fp.readlines():
             arguments = [ x.strip() for x in line.split(',') ]
             command = arguments[0]
-            random_node=randrange(len(ip_port_list))
+            random_node=ip_port_list[randrange(len(ip_port_list))]
             random_ip=random_node[0]
             random_port=random_node[1]
             if command == "join":
