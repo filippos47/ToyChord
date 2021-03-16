@@ -22,18 +22,20 @@ def bulk_operations(ctx, ip_port_list, source_file): #[(ip1,port1),(ip2,port2) ]
             arguments = [ x.strip() for x in line.split(',') ]
             command = arguments[0]
             random_node=randrange(len(ip_port_list))
+            random_ip=random_node[0]
+            random_port=random_node[1]
             if command == "join":
-                ctx.invoke(join, ip_address = ip_port_list[random_node][0], port = ip_port_list[random_node][0][1])
+                ctx.invoke(join, ip_address = random_ip,port=random_port)
             elif command == "depart":
-                ctx.invoke(depart, ip_address = ip_port_list[random_node][0], port = ip_port_list[random_node][0][1])
+                ctx.invoke(depart, ip_address = random_ip,port=random_port)
             elif command == "overlay":
-                ctx.invoke(overlay, ip_address = ip_port_list[random_node][0], port = ip_port_list[random_node][0][1])
+                ctx.invoke(overlay, ip_address = random_ip,port=random_port)
             elif command == "insert":
-                ctx.invoke(insert, ip_address = ip_port_list[random_node][0], port = ip_port_list[random_node][0][1],
+                ctx.invoke(insert, ip_address = random_ip,port=random_port,
                         key = arguments[1], value = arguments[2])
             elif command == "delete":
-                ctx.invoke(delete, ip_address = ip_port_list[random_node][0], port = ip_port_list[random_node][0][1],
+                ctx.invoke(delete, ip_address = random_ip,port=random_port,
                         key = arguments[1])
             elif command == "query":
-                ctx.invoke(query, ip_address = ip_port_list[random_node][0], port = ip_port_list[random_node][0][1],
+                ctx.invoke(query, ip_address = random_ip,port=random_port,
                         key = arguments[1])
