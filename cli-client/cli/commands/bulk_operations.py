@@ -17,7 +17,7 @@ from random import randrange
 
 @click.option('--addr_string', '-addr_s', type = str, required = True)
 
-@global_options
+
 @click.pass_context
 def bulk_operations(ctx,source_file,addr_string): # ip1:port1,ip2:port2...(string)
     with open(source_file, "r") as fp:
@@ -32,13 +32,7 @@ def bulk_operations(ctx,source_file,addr_string): # ip1:port1,ip2:port2...(strin
             random_ip=random_node[0]
             random_port=random_node[1]
 
-            if command == "join":
-                ctx.invoke(join, ip_address = random_ip,port=random_port)
-            elif command == "depart":
-                ctx.invoke(depart, ip_address = random_ip,port=random_port)
-            elif command == "overlay":
-                ctx.invoke(overlay, ip_address = random_ip,port=random_port)
-            elif command == "insert":
+            if command == "insert":
                 ctx.invoke(insert, ip_address = random_ip,port=random_port,
                         key = arguments[1], value = arguments[2])
             elif command == "delete":
