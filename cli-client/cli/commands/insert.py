@@ -10,7 +10,7 @@ from cli.utils.global_options import global_options
         help = 'The value of the to-be-inserted key-value pair') 
 @global_options
 def insert(ip_address, port, key, value):
-	url = 'http://' + str(ip_address) + ':' + str(port) + '/insert'
-	params = { "key": key, "value": value }
-	response = requests.post(url, params = params)
-	click.echo(response.text)
+    url = 'http://' + str(ip_address) + ':' + str(port) + '/insert'
+    params = { "key": key, "value": value }
+    response = requests.post(url, params = params)
+    click.echo(response.text)

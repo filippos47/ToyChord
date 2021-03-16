@@ -8,7 +8,7 @@ from cli.utils.global_options import global_options
         help = 'The key of the to-be-deleted key-value pair')
 @global_options
 def delete(ip_address, port, key):
-	url = 'http://' + str(ip_address) + ':' + str(port) + '/delete'
-	params = { "key": key }
-	response = requests.post(url, params = params)
-	click.echo(response.text)
+    url = 'http://' + str(ip_address) + ':' + str(port) + '/delete'
+    params = { "key": key }
+    response = requests.post(url, params = params)
+    click.echo(response.text)
