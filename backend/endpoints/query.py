@@ -22,7 +22,7 @@ class Query(Resource):
                 # If we want chain replication, only the last replica of the
                 # queried entry should answer our query.
                 if CONSISTENCY_MODE == "CHAIN_REPLICATION":
-                    sql_query.filter(KeyValuePair.replica_id == REPLICATION_FACTOR)
+                    sql_query = sql_query.filter(KeyValuePair.replica_id == REPLICATION_FACTOR)
                 # Else, any replica can answer our query.
                 entry = sql_query.first()
                 if entry is not None:
