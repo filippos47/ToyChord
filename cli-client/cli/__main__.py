@@ -9,8 +9,8 @@ from cli.commands.query import query
 from cli.commands.overlay import overlay
 from cli.commands.bulk_operations import bulk_operations
 
-@click.group(help= 'Welcome to the interface of our file sharing application ' \
-                   'Toychord. Have fun with ToyChord!!')
+@click.group(help= 'Welcome to the CLI interface of our file-sharing ' \
+                   'application clone, Toychord. Have fun!')
 def cli():
     pass
  
