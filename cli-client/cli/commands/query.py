@@ -15,4 +15,7 @@ def query(ip_address, port, key):
     if key != "*":
         click.echo(response.text)
     else:
-        click.echo(json.dumps(response.json(), indent=2))
+        try:
+            click.echo(json.dumps(response.json(), indent=2))
+        except:
+            click.echo(response.text)
